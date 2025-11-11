@@ -6,36 +6,36 @@ Sebuah platform literasi digital *full-stack* untuk anak usia dini, guru, dan or
 
 ## 🌟 Konsep Inti: "Satu Aplikasi, Dua Mode"
 
-[cite_start]Aplikasi ini menggunakan satu basis kode (codebase) untuk melayani dua antarmuka yang sangat berbeda, berdasarkan dokumen konsep[cite: 8]:
+Aplikasi ini menggunakan satu basis kode (codebase) untuk melayani dua antarmuka yang sangat berbeda, berdasarkan dokumen konsep:
 
 1.  **Mode Anak (Antarmuka Belajar):**
-    * [cite_start]Desain visual seperti game edukasi, minim teks, dan kaya audio/video[cite: 13].
-    * [cite_start]Akses tanpa login; anak cukup memilih profil mereka berdasarkan nama/foto[cite: 14].
-    * [cite_start]Secara otomatis mencatat log aktivitas (konten apa yang dimainkan/ditonton) ke backend[cite: 71].
+   Desain visual seperti game edukasi, minim teks, dan kaya audio/video.
+   Akses tanpa login; anak cukup memilih profil mereka berdasarkan nama/foto.
+   Secara otomatis mencatat log aktivitas (konten apa yang dimainkan/ditonton) ke backend.
 
 2.  **Mode Dewasa (Antarmuka Dasbor):**
-    * [cite_start]Desain bersih berbasis data dan menu[cite: 17].
-    * [cite_start]Akses aman menggunakan login email/password[cite: 18].
-    * [cite_start]Menampilkan dasbor yang berbeda berdasarkan peran (Role) pengguna[cite: 19].
+    Desain bersih berbasis data dan menu.
+    Akses aman menggunakan login email/password.
+    Menampilkan dasbor yang berbeda berdasarkan peran (Role) pengguna.
 
 ## ✨ Fitur Utama yang Telah Diimplementasikan
 
 ### Mode Anak (Publik)
 * **Pemilihan Profil:** Anak memilih profil mereka (`StudentSelectionPage`).
-* [cite_start]**Pustaka Konten:** Menampilkan daftar konten (video & game) secara dinamis dari Strapi (`ContentListPage`)[cite: 51, 56].
+* **Pustaka Konten:** Menampilkan daftar konten (video & game) secara dinamis dari Strapi (`ContentListPage`).
 * **Video Player:** Memutar konten video langsung dari Strapi (`DetailPage` dengan `video_player`).
-* [cite_start]**Pencatatan Aktivitas:** Secara otomatis mengirim log (`ActivityLog`) ke Strapi setiap kali anak membuka konten[cite: 71, 75].
+* **Pencatatan Aktivitas:** Secara otomatis mengirim log (`ActivityLog`) ke Strapi setiap kali anak membuka konten.
 
 ### Mode Dewasa (Terproteksi)
 * **Splash Screen Pintar:** Mengecek sesi (`SharedPreferences`) saat aplikasi dibuka. Jika sudah login, langsung masuk ke dasbor yang sesuai.
 * **Login Berbasis Peran:** Sistem login aman yang terhubung ke Strapi (`/api/auth/local`) dan menyimpan token (JWT) serta peran pengguna (`guru` atau `orang_tua`).
-* [cite_start]**Dasbor Guru:** Menampilkan daftar murid yang **hanya** tertaut ke guru yang sedang login (menggunakan *workaround* filter sisi klien untuk mengatasi bug izin relasi Strapi)[cite: 62].
-* [cite_start]**Dasbor Orang Tua:** Menampilkan daftar anak yang **hanya** tertaut ke orang tua yang sedang login (logika filter yang sama)[cite: 64].
+* **Dasbor Guru:** Menampilkan daftar murid yang **hanya** tertaut ke guru yang sedang login (menggunakan *workaround* filter sisi klien untuk mengatasi bug izin relasi Strapi).
+* **Dasbor Orang Tua:** Menampilkan daftar anak yang **hanya** tertaut ke orang tua yang sedang login (logika filter yang sama).
 * **Laporan Kualitatif:**
     * Guru/Ortu dapat mengklik nama murid/anak untuk melihat `ActivityHistoryPage`.
-    * [cite_start]Halaman ini mengambil *semua* log aktivitas untuk anak tersebut[cite: 71].
+    * Halaman ini mengambil *semua* log aktivitas untuk anak tersebut.
     * Halaman ini juga mengambil "kamus" konten untuk menampilkan nama konten (cth: "Cerita Kancil") bukan hanya ID ("Konten 12").
-    * [cite_start]Menampilkan tab "Laporan" dengan analisis kualitatif sederhana (Total aktivitas, total durasi, dan insight)[cite: 69].
+    * Menampilkan tab "Laporan" dengan analisis kualitatif sederhana (Total aktivitas, total durasi, dan insight).
 
 ## 🛠️ Tumpukan Teknologi (Tech Stack)
 
