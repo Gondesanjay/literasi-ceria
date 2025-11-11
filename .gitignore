@@ -1,0 +1,23 @@
+# === KUMPULAN .gitignore UNTUK PROYEK FLUTTER + STRAPI ===
+
+# 1. Flutter (di dalam literasi_ceria_app)
+literasi_ceria_app/build/
+literasi_ceria_app/.dart_tool/
+literasi_ceria_app/.flutter-plugins
+literasi_ceria_app/.flutter-plugins-dependencies
+literasi_ceria_app/.packages
+literasi_ceria_app/*.iml
+literasi_ceria_app/*.idea
+literasi_ceria_app/ios/Pods/
+literasi_ceria_app/ios/Podfile.lock
+
+# 2. Strapi / Node.js (di dalam literasi-ceria-backend)
+literasi-ceria-backend/node_modules/
+literasi-ceria-backend/build/
+literasi-ceria-backend/dist/
+literasi-ceria-backend/.strapi/
+literasi-ceria-backend/*.log
+literasi-ceria-backend/yarn-error.log
+
+# 3. Kunci Rahasia (SANGAT PENTING UNTUK KEAMANAN)
+literasi-ceria-backend/.env
