@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
-
 import 'dashboard_page.dart';
-import 'parent_dashboard_page.dart'; // <-- Pastikan ini di-import
+import 'parent_dashboard_page.dart';
+
+// Menggunakan IP WiFi-mu yang benar
+const String _strapiIP = "http://192.168.1.11:1337";
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
-
   @override
   State<LoginPage> createState() => _LoginPageState();
 }
@@ -16,21 +17,18 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-
   String _message = '';
   bool _isLoading = false;
 
-  final String _apiUrl = "http://10.0.2.2:1337/api/auth/local";
+  final String _apiUrl = "$_strapiIP/api/auth/local"; // <-- Diperbarui
 
   Future<void> _login() async {
     setState(() {
       _isLoading = true;
       _message = '';
     });
-
     final String email = _emailController.text;
     final String password = _passwordController.text;
-
     try {
       final response = await http
           .post(
@@ -39,25 +37,18 @@ class _LoginPageState extends State<LoginPage> {
             body: jsonEncode({'identifier': email, 'password': password}),
           )
           .timeout(const Duration(seconds: 10));
-
       print("===== RESPON LOGIN (Status: ${response.statusCode}) =====");
       print(response.body);
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final String token = data['jwt'];
         final int userId = data['user']['id'];
         final String peran = data['user']['peran'] ?? 'unknown';
-
-        // 1. Simpan SEMUA data sesi
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('jwt_token', token);
         await prefs.setInt('user_id', userId);
         await prefs.setString('user_peran', peran);
-
-        // 2. Pindah Halaman BERDASARKAN PERAN
         if (!mounted) return;
-
         if (peran == 'guru') {
           Navigator.pushReplacement(
             context,
@@ -96,6 +87,7 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    // ... (UI Build tidak berubah) ...
     return Scaffold(
       appBar: AppBar(
         title: const Text('Login Mode Dewasa'),

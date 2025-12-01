@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http; // Untuk API
-import 'dart:convert'; // Untuk jsonEncode
-import 'package:video_player/video_player.dart'; // <-- Import package video
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
-//========================================================
-//=== KODE FINAL: DetailPage (Perbaikan URL) ===
-//========================================================
+// IMPORT SEMUA WIDGET KITA
+import 'video_player_widget.dart';
+import 'quiz_game_widget.dart';
+import 'number_game_widget.dart'; // Pastikan file ini sudah ada
+
+// GANTI DENGAN IP WIFI-MU YANG BENAR (Cek ipconfig)
+const String _strapiBaseUrl = "http://192.168.1.11:1337";
 
 class DetailPage extends StatefulWidget {
   final Map<String, dynamic> item;
@@ -18,118 +21,60 @@ class DetailPage extends StatefulWidget {
 }
 
 class _DetailPageState extends State<DetailPage> {
-  late VideoPlayerController _controller;
-  bool _isLoadingVideo = true;
-  bool _isLogging = true;
-  bool _logSuccess = false;
-  String _errorMessage = '';
-
-  // Kita TIDAK butuh _strapiBaseUrl lagi
-  // final String _strapiBaseUrl = "http://10.0.2.2:1337";
+  String _tipeKonten = 'unknown';
+  DateTime? _startTime;
 
   @override
   void initState() {
     super.initState();
-    _logActivity();
-    _initializeVideoPlayer();
-  }
+    _tipeKonten = widget.item['tipe_konten'] ?? 'unknown';
 
-  // --- FUNGSI VIDEO PLAYER (DIPERBARUI TOTAL) ---
-  Future<void> _initializeVideoPlayer() async {
-    try {
-      // 1. Ambil URL mentah dari Strapi (cth: http://localhost:1337/uploads/video.mp4)
-      final String? rawVideoUrl = widget.item['video_url'];
-
-      if (rawVideoUrl == null || rawVideoUrl.isEmpty) {
-        throw Exception(
-          "Video tidak ditemukan di Strapi (video_url null atau kosong).",
-        );
-      }
-
-      // 2. === INI PERBAIKANNYA (Langkah Final) ===
-      // Ganti 'localhost' (yang tidak bisa diakses Emulator)
-      // dengan '10.0.2.2' (alamat IP khusus Emulator)
-      final String fullVideoUrl = rawVideoUrl.replaceAll(
-        "http://localhost:1337", // Teks yang salah
-        "http://10.0.2.2:1337", // Teks pengganti yang benar
-      );
-      // === AKHIR PERBAIKAN ===
-
-      print("Mencoba memutar video dari (setelah replace): $fullVideoUrl");
-
-      _controller = VideoPlayerController.networkUrl(Uri.parse(fullVideoUrl));
-      await _controller.initialize();
-      _controller.setLooping(true);
-      _controller.play();
-
-      setState(() {
-        _isLoadingVideo = false;
-      });
-    } catch (e) {
-      print("❌ Error inisialisasi video: $e");
-      setState(() {
-        _isLoadingVideo = false;
-        _errorMessage = "Gagal memuat video: ${e.toString()}";
-      });
-    }
-  }
-
-  // --- FUNGSI LOG (SUDAH BENAR) ---
-  Future<void> _logActivity() async {
-    // ... (Fungsi _logActivity() kamu sudah 100% benar, tidak perlu diubah) ...
-    setState(() {
-      _isLogging = true;
-    });
-    final String apiUrl = "http://10.0.2.2:1337/api/activity-logs";
-    try {
-      final response = await http
-          .post(
-            Uri.parse(apiUrl),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'data': {
-                'student_id': widget.studentId.toString(),
-                'content_id': widget.item['id'].toString(),
-                'durasi': 10,
-              },
-            }),
-          )
-          .timeout(const Duration(seconds: 10));
-
-      print("===== MENGIRIM LOG (Status: ${response.statusCode}) =====");
-      print(response.body);
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        print("✅ Log aktivitas berhasil disimpan!");
-        setState(() {
-          _isLogging = false;
-          _logSuccess = true;
-        });
-      } else {
-        print("❌ Gagal menyimpan log. Status: ${response.statusCode}");
-        setState(() {
-          _isLogging = false;
-          _logSuccess = false;
-        });
-      }
-    } catch (e) {
-      print("❌ Error saat mengirim log: $e");
-      setState(() {
-        _isLogging = false;
-        _logSuccess = false;
-      });
-    }
+    // Mulai hitung waktu (Stopwatch) saat halaman dibuka
+    _startTime = DateTime.now();
   }
 
   @override
   void dispose() {
-    if (_isLoadingVideo == false && _errorMessage.isEmpty) {
-      _controller.dispose();
+    // Logika khusus untuk VIDEO:
+    // Kita kirim log durasi saat halaman ditutup.
+    // (Untuk Game, log dikirim saat anak berhasil menjawab/menang di dalam widget game-nya sendiri)
+    if (_tipeKonten == 'video_cerita' && _startTime != null) {
+      final endTime = DateTime.now();
+      final int durasiNyata = endTime.difference(_startTime!).inSeconds;
+      _logVideoActivity(durasiNyata);
     }
     super.dispose();
   }
 
-  // --- TAMPILAN BUILD (SUDAH BENAR) ---
+  // Fungsi Log Khusus Video
+  Future<void> _logVideoActivity(int durasiDetik) async {
+    // Jangan catat jika durasi terlalu singkat (misal: kepencet)
+    if (durasiDetik < 3) return;
+
+    final String apiUrl = "$_strapiBaseUrl/api/activity-logs";
+    try {
+      await http.post(
+        Uri.parse(apiUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'data': {
+            'student_id': widget.studentId.toString(),
+            'content_id': widget.item['id'].toString(),
+            'durasi': durasiDetik,
+            // Data Laporan Canggih untuk Video
+            'module': 'Pojok Cerita',
+            'action': 'Menonton Video',
+            'result': 'Selesai',
+            'detail': 'Menonton selama $durasiDetik detik',
+          },
+        }),
+      );
+      print("✅ Log Video Terkirim!");
+    } catch (e) {
+      print("❌ Error log video: $e");
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final String judul = widget.item['judul'] ?? 'Tanpa Judul';
@@ -140,58 +85,44 @@ class _DetailPageState extends State<DetailPage> {
         backgroundColor: Colors.blueAccent,
         foregroundColor: Colors.white,
       ),
-      body: Center(
-        child: _buildVideoContent(), // Panggil body baru
-      ),
-
-      // Tombol Play/Pause (Sudah benar, sembunyi saat loading)
-      floatingActionButton: (_isLoadingVideo || _errorMessage.isNotEmpty)
-          ? null
-          : FloatingActionButton(
-              onPressed: () {
-                setState(() {
-                  if (_controller.value.isPlaying) {
-                    _controller.pause();
-                  } else {
-                    _controller.play();
-                  }
-                });
-              },
-              child: Icon(
-                _controller.value.isPlaying ? Icons.pause : Icons.play_arrow,
-              ),
-            ),
+      // Body hanya berfungsi sebagai "Penjaga Gerbang"
+      body: Center(child: _buildContentBody()),
     );
   }
 
-  // --- TAMPILAN VIDEO (SUDAH BENAR) ---
-  Widget _buildVideoContent() {
-    if (_isLoadingVideo) {
+  // Fungsi "Penjaga Gerbang" yang memilih widget sesuai tipe
+  Widget _buildContentBody() {
+    // 1. JIKA VIDEO
+    if (_tipeKonten == 'video_cerita') {
+      return VideoPlayerWidget(item: widget.item);
+    }
+    // 2. JIKA GAME HURUF (TAMAN HURUF)
+    else if (_tipeKonten == 'game_huruf') {
+      return QuizGameWidget(
+        contentId: widget.item['id'],
+        studentId: widget.studentId, // Kirim ID Murid untuk laporan
+      );
+    }
+    // 3. JIKA GAME ANGKA (PETUALANGAN ANGKA)
+    else if (_tipeKonten == 'game_angka') {
+      return NumberGameWidget(
+        contentId: widget.item['id'],
+        studentId: widget.studentId, // Kirim ID Murid untuk laporan
+      );
+    }
+    // 4. JIKA TIDAK DIKENALI
+    else {
       return Column(
         mainAxisAlignment: MainAxisAlignment.center,
-        children: const [
-          CircularProgressIndicator(),
-          SizedBox(height: 16),
-          Text("Memuat video..."),
+        children: [
+          const Icon(Icons.error_outline, color: Colors.red, size: 50),
+          const SizedBox(height: 10),
+          Text(
+            "Tipe konten tidak dikenali: $_tipeKonten",
+            style: const TextStyle(color: Colors.red),
+          ),
         ],
       );
     }
-
-    if (_errorMessage.isNotEmpty) {
-      return Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Text(
-          "Error: $_errorMessage",
-          style: const TextStyle(color: Colors.red),
-          textAlign: TextAlign.center,
-        ),
-      );
-    }
-
-    // Tampilkan video
-    return AspectRatio(
-      aspectRatio: _controller.value.aspectRatio,
-      child: VideoPlayer(_controller),
-    );
   }
 }

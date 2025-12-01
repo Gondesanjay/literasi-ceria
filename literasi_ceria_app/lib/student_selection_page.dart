@@ -1,25 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'content_list_page.dart'; // Halaman "Pojok Cerita"
+import 'package:shared_preferences/shared_preferences.dart';
+import 'content_list_page.dart';
 
-// Model sederhana untuk data Murid
+// Menggunakan IP WiFi-mu yang benar
+const String _strapiBaseUrl = "http://192.168.1.11:1337";
+
+// Model Student
 class Student {
   final int id;
   final String nama;
-  // final String? fotoUrl; // Nanti kita tambahkan
+  final String? fotoUrl;
 
-  Student({required this.id, required this.nama});
+  Student({required this.id, required this.nama, this.fotoUrl});
 
-  // Ini membaca data Strapi v5 (tanpa 'attributes')
   factory Student.fromJson(Map<String, dynamic> json) {
-    return Student(id: json['id'], nama: json['nama_lengkap'] ?? 'Tanpa Nama');
+    String? finalFotoUrl;
+    if (json['foto_profil'] != null && json['foto_profil']['url'] != null) {
+      String urlPath = json['foto_profil']['url'];
+      if (urlPath.startsWith('http')) {
+        finalFotoUrl = urlPath.replaceAll(
+          "http://localhost:1337",
+          _strapiBaseUrl, // Menggunakan IP WiFi
+        );
+      } else {
+        finalFotoUrl = _strapiBaseUrl + urlPath;
+      }
+    }
+    return Student(
+      id: json['id'],
+      nama: json['nama_lengkap'] ?? 'Tanpa Nama',
+      fotoUrl: finalFotoUrl,
+    );
   }
 }
 
 class StudentSelectionPage extends StatefulWidget {
   const StudentSelectionPage({super.key});
-
   @override
   State<StudentSelectionPage> createState() => _StudentSelectionPageState();
 }
@@ -35,19 +53,18 @@ class _StudentSelectionPageState extends State<StudentSelectionPage> {
     _fetchStudents();
   }
 
-  // Fungsi untuk mengambil daftar murid dari Strapi
   Future<void> _fetchStudents() async {
-    // API ini butuh izin 'find' di role 'Public' untuk 'Student'
     final String apiUrl =
-        "http://10.0.2.2:1337/api/students?populate=foto_profil";
+        "$_strapiBaseUrl/api/students?populate=foto_profil"; // <-- Diperbarui
 
     try {
       final response = await http.get(Uri.parse(apiUrl));
+      print("===== RESPON DATA MURID (Status: ${response.statusCode}) =====");
+      print(response.body);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final List studentList = data['data'];
-
         setState(() {
           _daftarMurid = studentList
               .map((json) => Student.fromJson(json))
@@ -68,23 +85,25 @@ class _StudentSelectionPageState extends State<StudentSelectionPage> {
     }
   }
 
-  // Fungsi saat profil murid dipilih
-  void _onStudentSelected(Student student) {
+  Future<void> _onStudentSelected(Student student) async {
     print("Anak yang dipilih: ${student.nama} (ID: ${student.id})");
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('active_student_id', student.id);
+    await prefs.setString('active_student_name', student.nama);
+    print("ID Murid ${student.id} berhasil disimpan ke sesi.");
 
-    // Pindah ke Halaman "Pojok Cerita" dan KIRIM ID MURID
-    Navigator.push(
+    if (!mounted) return;
+    Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (context) => ContentListPage(
-          studentId: student.id, // <-- KITA KIRIM ID MURID
-        ),
+        builder: (context) => ContentListPage(studentId: student.id),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    // ... (UI Build tidak berubah) ...
     return Scaffold(
       appBar: AppBar(
         title: const Text('Pilih Profil Kamu'),
@@ -99,24 +118,21 @@ class _StudentSelectionPageState extends State<StudentSelectionPage> {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
-
     if (_errorMessage.isNotEmpty) {
       return Center(
         child: Text(_errorMessage, style: const TextStyle(color: Colors.red)),
       );
     }
-
     if (_daftarMurid.isEmpty) {
       return const Center(
         child: Text('Tidak ada profil murid yang terdaftar.'),
       );
     }
 
-    // Tampilkan Grid (kisi-kisi) profil
     return GridView.builder(
       padding: const EdgeInsets.all(20.0),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2, // 2 kolom
+        crossAxisCount: 2,
         crossAxisSpacing: 20,
         mainAxisSpacing: 20,
       ),
@@ -140,11 +156,31 @@ class _StudentSelectionPageState extends State<StudentSelectionPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(
-                  Icons.face_retouching_natural, // Placeholder ikon wajah
-                  size: 60,
-                  color: Colors.blueAccent,
-                ),
+                (student.fotoUrl != null)
+                    ? ClipOval(
+                        child: Image.network(
+                          student.fotoUrl!,
+                          width: 80,
+                          height: 80,
+                          fit: BoxFit.cover,
+                          loadingBuilder: (context, child, progress) {
+                            if (progress == null) return child;
+                            return const CircularProgressIndicator();
+                          },
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Icon(
+                              Icons.error_outline,
+                              size: 60,
+                              color: Colors.red,
+                            );
+                          },
+                        ),
+                      )
+                    : const Icon(
+                        Icons.face_retouching_natural,
+                        size: 60,
+                        color: Colors.blueAccent,
+                      ),
                 const SizedBox(height: 15),
                 Text(
                   student.nama,

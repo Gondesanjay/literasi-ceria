@@ -1,19 +1,23 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http; // Untuk memanggil API
-import 'package:shared_preferences/shared_preferences.dart'; // Untuk ambil token
-import 'dart:convert'; // Untuk jsonDecode
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import 'package:fl_chart/fl_chart.dart';
+import 'log_detail_page.dart'; // <-- 1. IMPORT HALAMAN BARU KITA
 
-// Model Sederhana untuk Laporan
+// GANTI INI DENGAN ALAMAT IP WIFI-MU
+const String _strapiBaseUrl = "http://192.168.1.11:1337";
+
+// Model Laporan (Tidak berubah)
 class Laporan {
   int totalAktivitas = 0;
   int totalVideo = 0;
   int totalGame = 0;
   int totalDurasi = 0;
-
   Laporan();
 }
 
-// Model Sederhana untuk Kamus Konten
+// Model Kamus Konten (Tidak berubah)
 class ContentInfo {
   final String judul;
   final String tipe;
@@ -23,13 +27,11 @@ class ContentInfo {
 class ActivityHistoryPage extends StatefulWidget {
   final int studentId;
   final String studentName;
-
   const ActivityHistoryPage({
     super.key,
     required this.studentId,
     required this.studentName,
   });
-
   @override
   State<ActivityHistoryPage> createState() => _ActivityHistoryPageState();
 }
@@ -38,13 +40,8 @@ class _ActivityHistoryPageState extends State<ActivityHistoryPage> {
   List _activityLogs = [];
   bool _isLoading = true;
   String _errorMessage = '';
-
-  // === INI KAMUS YANG SUDAH DIPERBAIKI ===
-  // Cth: "8" -> ContentInfo(judul: "Cerita Kancil", tipe: "video_cerita")
   Map<String, ContentInfo> _contentMap = {};
-  // === AKHIR PERBAIKAN ===
-
-  Laporan _laporan = Laporan(); // Objek untuk menyimpan hasil analisis
+  Laporan _laporan = Laporan();
 
   @override
   void initState() {
@@ -52,30 +49,22 @@ class _ActivityHistoryPageState extends State<ActivityHistoryPage> {
     _loadData();
   }
 
+  // --- SEMUA FUNGSI DATA (DI BAWAH INI) SUDAH BENAR ---
+  // (Tidak perlu diubah, kita hanya ubah Tampilan)
+
   Future<void> _loadData() async {
     setState(() {
       _isLoading = true;
       _errorMessage = '';
     });
-
     try {
       final prefs = await SharedPreferences.getInstance();
       final String? token = prefs.getString('jwt_token');
-
       if (token == null) {
         throw Exception('Sesi tidak ditemukan. Silakan login ulang.');
       }
-
-      // 1. Ambil "kamus" konten dulu (ini penting untuk analisis)
-      await _fetchContentMap(token);
-
-      // 2. Ambil log aktivitas
-      await _fetchActivityLogs(token);
-
-      // 3. (BARU) Analisis log yang sudah didapat
+      await Future.wait([_fetchContentMap(token), _fetchActivityLogs(token)]);
       _analyzeLogs();
-
-      // 4. Setelah semua selesai, matikan loading
       setState(() {
         _isLoading = false;
       });
@@ -89,7 +78,7 @@ class _ActivityHistoryPageState extends State<ActivityHistoryPage> {
 
   Future<void> _fetchActivityLogs(String token) async {
     final String apiUrl =
-        "http://10.0.2.2:1337/api/activity-logs?filters[student_id][\$eq]=${widget.studentId}";
+        "$_strapiBaseUrl/api/activity-logs?filters[student_id][\$eq]=${widget.studentId}&sort=createdAt:desc"; // Kita urutkan (sort) agar yang terbaru di atas
 
     final response = await http
         .get(
@@ -111,9 +100,8 @@ class _ActivityHistoryPageState extends State<ActivityHistoryPage> {
     }
   }
 
-  // --- FUNGSI KAMUS (DIPERBAIKI) ---
   Future<void> _fetchContentMap(String token) async {
-    final String apiUrl = "http://10.0.2.2:1337/api/contents?populate=*";
+    final String apiUrl = "$_strapiBaseUrl/api/contents?populate=*";
 
     final response = await http
         .get(
@@ -128,8 +116,6 @@ class _ActivityHistoryPageState extends State<ActivityHistoryPage> {
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       final List allContent = data['data'];
-
-      // Buat "kamus" kita
       Map<String, ContentInfo> tempMap = {};
       for (var item in allContent) {
         tempMap[item['id'].toString()] = ContentInfo(
@@ -137,8 +123,6 @@ class _ActivityHistoryPageState extends State<ActivityHistoryPage> {
           tipe: item['tipe_konten'] ?? 'unknown',
         );
       }
-
-      // Simpan "kamus" ke state
       setState(() {
         _contentMap = tempMap;
       });
@@ -146,23 +130,15 @@ class _ActivityHistoryPageState extends State<ActivityHistoryPage> {
       throw Exception('Gagal mengambil data konten: ${response.statusCode}');
     }
   }
-  // --- AKHIR FUNGSI KAMUS (DIPERBAIKI) ---
 
-  // --- FUNGSI ANALISIS (DIPERBAIKI) ---
   void _analyzeLogs() {
     if (_activityLogs.isEmpty || _contentMap.isEmpty) return;
-
     Laporan laporanBaru = Laporan();
     laporanBaru.totalAktivitas = _activityLogs.length;
-
     for (var log in _activityLogs) {
-      // Tambahkan durasi
       laporanBaru.totalDurasi += (log['durasi'] ?? 0) as int;
-
-      // Cek tipe konten
       final String contentId = log['content_id'] ?? '??';
-      final ContentInfo? info = _contentMap[contentId]; // Cari di kamus
-
+      final ContentInfo? info = _contentMap[contentId];
       if (info != null) {
         if (info.tipe == 'video_cerita') {
           laporanBaru.totalVideo += 1;
@@ -171,12 +147,10 @@ class _ActivityHistoryPageState extends State<ActivityHistoryPage> {
         }
       }
     }
-
     setState(() {
       _laporan = laporanBaru;
     });
   }
-  // === AKHIR FUNGSI ANALISIS (DIPERBAIKI) ===
 
   @override
   Widget build(BuildContext context) {
@@ -214,15 +188,11 @@ class _ActivityHistoryPageState extends State<ActivityHistoryPage> {
               Tab(icon: Icon(Icons.history), text: "Riwayat"),
             ],
           ),
-
           Expanded(
             child: TabBarView(
               children: [
-                // === Isi Tab 1: Laporan (Analisis Kualitatif) ===
                 _buildLaporanTab(),
-
-                // === Isi Tab 2: Riwayat (Daftar Log) ===
-                _buildLogList(),
+                _buildLogList(), // <-- Kita akan ubah ini
               ],
             ),
           ),
@@ -231,7 +201,7 @@ class _ActivityHistoryPageState extends State<ActivityHistoryPage> {
     );
   }
 
-  // Widget untuk Tab 1: Laporan
+  // Widget Tab 1: Laporan (Tidak berubah)
   Widget _buildLaporanTab() {
     if (_activityLogs.isEmpty) {
       return const Center(
@@ -243,24 +213,62 @@ class _ActivityHistoryPageState extends State<ActivityHistoryPage> {
       );
     }
 
-    // Ubah durasi dari detik ke menit
+    final int totalAktivitas = _laporan.totalAktivitas;
+    final double videoPct = (totalAktivitas == 0)
+        ? 0
+        : (_laporan.totalVideo / totalAktivitas) * 100;
+    final double gamePct = (totalAktivitas == 0)
+        ? 0
+        : (_laporan.totalGame / totalAktivitas) * 100;
+    List<PieChartSectionData> pieSections = [];
+
+    if (_laporan.totalVideo > 0) {
+      pieSections.add(
+        PieChartSectionData(
+          value: _laporan.totalVideo.toDouble(),
+          title: '${videoPct.toStringAsFixed(0)}%',
+          color: Colors.redAccent,
+          radius: 80,
+          titleStyle: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+      );
+    }
+    if (_laporan.totalGame > 0) {
+      pieSections.add(
+        PieChartSectionData(
+          value: _laporan.totalGame.toDouble(),
+          title: '${gamePct.toStringAsFixed(0)}%',
+          color: Colors.blueAccent,
+          radius: 80,
+          titleStyle: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+      );
+    }
+
     final int totalMenit = (_laporan.totalDurasi / 60).round();
 
-    // Ini adalah "Insight Deskriptif" sederhana kita
     String insight = "Murid ini seimbang antara video dan game.";
-    if (_laporan.totalVideo > _laporan.totalGame) {
+    if (videoPct > 60) {
       insight = "Murid ini lebih menyukai video cerita.";
-    } else if (_laporan.totalGame > _laporan.totalVideo) {
+    } else if (gamePct > 60) {
       insight = "Murid ini lebih menyukai aktivitas game.";
     }
 
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            "Ringkasan Kualitatif",
+            "Ringkasan Visual",
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
@@ -268,8 +276,36 @@ class _ActivityHistoryPageState extends State<ActivityHistoryPage> {
             ),
           ),
           const SizedBox(height: 20),
-
-          // Card 1
+          SizedBox(
+            height: 200,
+            child: PieChart(
+              PieChartData(
+                sections: pieSections,
+                centerSpaceRadius: 40,
+                borderData: FlBorderData(show: false),
+                sectionsSpace: 2,
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _buildLegend(color: Colors.redAccent, text: "Video"),
+              const SizedBox(width: 20),
+              _buildLegend(color: Colors.blueAccent, text: "Game"),
+            ],
+          ),
+          const SizedBox(height: 30),
+          const Text(
+            "Statistik Detail",
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Colors.indigo,
+            ),
+          ),
+          const SizedBox(height: 10),
           Card(
             elevation: 2,
             child: ListTile(
@@ -278,8 +314,6 @@ class _ActivityHistoryPageState extends State<ActivityHistoryPage> {
               subtitle: Text("${_laporan.totalAktivitas} aktivitas"),
             ),
           ),
-
-          // Card 2
           Card(
             elevation: 2,
             child: ListTile(
@@ -288,8 +322,6 @@ class _ActivityHistoryPageState extends State<ActivityHistoryPage> {
               subtitle: Text("~$totalMenit menit"),
             ),
           ),
-
-          // Card 3
           Card(
             elevation: 2,
             child: ListTile(
@@ -298,8 +330,6 @@ class _ActivityHistoryPageState extends State<ActivityHistoryPage> {
               subtitle: Text("${_laporan.totalVideo} video"),
             ),
           ),
-
-          // Card 4
           Card(
             elevation: 2,
             child: ListTile(
@@ -308,7 +338,6 @@ class _ActivityHistoryPageState extends State<ActivityHistoryPage> {
               subtitle: Text("${_laporan.totalGame} game"),
             ),
           ),
-
           const SizedBox(height: 20),
           const Text(
             "Insight Sederhana",
@@ -327,7 +356,19 @@ class _ActivityHistoryPageState extends State<ActivityHistoryPage> {
     );
   }
 
-  // Widget untuk Tab 2: Riwayat (Kode lama kita)
+  // Widget helper legenda (Tidak berubah)
+  Widget _buildLegend({required Color color, required String text}) {
+    return Row(
+      children: [
+        Container(width: 20, height: 20, color: color),
+        const SizedBox(width: 8),
+        Text(text, style: const TextStyle(fontSize: 16)),
+      ],
+    );
+  }
+
+  // === INI WIDGET YANG KITA UBAH (Langkah 81) ===
+  // Widget untuk Tab 2: Riwayat
   Widget _buildLogList() {
     if (_activityLogs.isEmpty) {
       return const Center(
@@ -342,26 +383,46 @@ class _ActivityHistoryPageState extends State<ActivityHistoryPage> {
     return ListView.builder(
       itemCount: _activityLogs.length,
       itemBuilder: (context, index) {
-        final item = _activityLogs[index];
+        final item = _activityLogs[index]; // Ini adalah Map data log-nya
         final String contentId = item['content_id'] ?? '??';
         final int durasi = item['durasi'] ?? 0;
 
-        // Cari nama konten di "kamus" _contentMap kita
+        // Ambil nama konten dari "kamus" kita
         final String contentName =
             _contentMap[contentId]?.judul ?? 'Konten (ID: $contentId)';
         final String contentType = _contentMap[contentId]?.tipe ?? 'unknown';
 
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          child: ListTile(
-            leading: Icon(
-              contentType == 'video_cerita' ? Icons.movie_filter : Icons.games,
-              color: Colors.indigo,
+        // 2. BUNGKUS DENGAN INKWELL
+        return InkWell(
+          onTap: () {
+            // 3. PINDAH KE HALAMAN DETAIL LOG
+            print("Melihat detail log untuk: $contentName");
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => LogDetailPage(
+                  logData: item, // Kirim semua data log
+                  contentName: contentName, // Kirim nama kontennya
+                ),
+              ),
+            );
+          },
+          child: Card(
+            margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            child: ListTile(
+              leading: Icon(
+                contentType == 'video_cerita'
+                    ? Icons.movie_filter
+                    : Icons.games,
+                color: Colors.indigo,
+              ),
+              title: Text(contentName),
+              subtitle: Text('Selama $durasi detik'),
+              trailing: const Icon(Icons.chevron_right), // Tambah ikon panah
             ),
-            title: Text(contentName),
-            subtitle: Text('Selama $durasi detik'),
           ),
         );
+        // === AKHIR PERUBAHAN ===
       },
     );
   }

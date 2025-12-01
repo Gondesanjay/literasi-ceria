@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-// Import SEMUA halaman tujuan kita
 import 'chooser_page.dart';
 import 'dashboard_page.dart';
-import 'parent_dashboard_page.dart'; // <-- Pastikan ini di-import
+import 'parent_dashboard_page.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
-
   @override
   State<SplashPage> createState() => _SplashPageState();
 }
@@ -22,19 +19,13 @@ class _SplashPageState extends State<SplashPage> {
 
   Future<void> _checkLoginStatus() async {
     await Future.delayed(const Duration(seconds: 2));
-
     final prefs = await SharedPreferences.getInstance();
-
-    // Ambil token DAN peran
     final String? token = prefs.getString('jwt_token');
-    final String? peran = prefs.getString(
-      'user_peran',
-    ); // <-- KITA BACA PERANNYA
+    final String? peran = prefs.getString('user_peran');
 
     if (!mounted) return;
 
     if (token != null && token.isNotEmpty && peran != null) {
-      // --- JIKA ADA TOKEN DAN PERAN ---
       if (peran == 'guru') {
         Navigator.pushReplacement(
           context,
@@ -46,14 +37,12 @@ class _SplashPageState extends State<SplashPage> {
           MaterialPageRoute(builder: (context) => const ParentDashboardPage()),
         );
       } else {
-        // Peran tidak diketahui
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const ChooserPage()),
         );
       }
     } else {
-      // --- JIKA TIDAK ADA TOKEN (BELUM LOGIN) ---
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const ChooserPage()),
@@ -63,7 +52,6 @@ class _SplashPageState extends State<SplashPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Tampilan Splash Screen (sederhana, hanya loading)
     return const Scaffold(
       backgroundColor: Colors.blueAccent,
       body: Center(

@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
-
 import 'login_page.dart';
-import 'activity_history_page.dart'; // <-- Pastikan ini di-import
+import 'activity_history_page.dart';
+
+// Menggunakan IP WiFi-mu
+const String _strapiIP = "http://192.168.1.11:1337";
 
 class ParentDashboardPage extends StatefulWidget {
   const ParentDashboardPage({super.key});
-
   @override
   State<ParentDashboardPage> createState() => _ParentDashboardPageState();
 }
@@ -24,21 +25,19 @@ class _ParentDashboardPageState extends State<ParentDashboardPage> {
     _fetchAnakData();
   }
 
-  // Fungsi (WORKAROUND) untuk filter anak di Flutter
   Future<void> _fetchAnakData() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final String? token = prefs.getString('jwt_token');
-      final int? userId = prefs.getInt('user_id'); // ID Ortu
+      final int? userId = prefs.getInt('user_id');
 
       if (token == null || userId == null) {
         _logout();
         return;
       }
 
-      // 1. Ambil SEMUA murid, tapi populate data 'orang_tua_wali'
       final String apiUrl =
-          "http://10.0.2.2:1337/api/students?populate=orang_tua_wali";
+          "$_strapiIP/api/students?populate=orang_tua_wali"; // <-- Diperbarui
 
       final response = await http
           .get(
@@ -54,13 +53,12 @@ class _ParentDashboardPageState extends State<ParentDashboardPage> {
         final data = jsonDecode(response.body);
         final List allStudents = data['data'];
 
-        // 2. Filter di sisi KLIEN (Flutter)
+        // Filter Sisi Klien (Flutter)
         final List filteredStudents = allStudents.where((student) {
           final List? ortuList = student['orang_tua_wali'];
           if (ortuList == null || ortuList.isEmpty) {
             return false;
           }
-          // Cek apakah ID Ortu yang login ada di dalam daftar wali
           return ortuList.any((ortu) => ortu['id'] == userId);
         }).toList();
 
@@ -82,7 +80,6 @@ class _ParentDashboardPageState extends State<ParentDashboardPage> {
     }
   }
 
-  // Fungsi Logout
   Future<void> _logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
@@ -136,7 +133,6 @@ class _ParentDashboardPageState extends State<ParentDashboardPage> {
         final String nama = item['nama_lengkap'] ?? 'Tanpa Nama';
         final int studentId = item['id'];
 
-        // Dibuat bisa diklik (Langkah 49)
         return InkWell(
           onTap: () {
             print("Melihat riwayat untuk: $nama (ID: $studentId)");

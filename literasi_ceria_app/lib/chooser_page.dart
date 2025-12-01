@@ -1,10 +1,41 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'student_selection_page.dart';
+import 'login_page.dart';
+import 'content_list_page.dart';
 
-import 'student_selection_page.dart'; // <-- Arahkan ke file yang benar
-import 'login_page.dart'; // Halaman Login (Mode Dewasa)
-
-class ChooserPage extends StatelessWidget {
+class ChooserPage extends StatefulWidget {
   const ChooserPage({super.key});
+  @override
+  State<ChooserPage> createState() => _ChooserPageState();
+}
+
+class _ChooserPageState extends State<ChooserPage> {
+  // Fungsi untuk cek sesi anak
+  Future<void> _goToModeAnak() async {
+    final prefs = await SharedPreferences.getInstance();
+    final int? studentId = prefs.getInt('active_student_id');
+
+    if (!mounted) return;
+
+    if (studentId != null) {
+      // JIKA ADA SESI ANAK: Langsung loncat ke Pojok Cerita
+      print("Sesi anak ditemukan (ID: $studentId). Langsung ke Pojok Cerita.");
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ContentListPage(studentId: studentId),
+        ),
+      );
+    } else {
+      // JIKA TIDAK ADA SESI ANAK: Pergi ke Halaman Pemilihan Profil
+      print("Sesi anak tidak ditemukan. Pergi ke Halaman Pilih Profil.");
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const StudentSelectionPage()),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +59,7 @@ class ChooserPage extends StatelessWidget {
               ),
               const SizedBox(height: 50),
 
-              // Tombol 1: Mode Anak (Arahnya sudah benar)
+              // Tombol "Mode Anak" (Pintar)
               ElevatedButton.icon(
                 icon: const Icon(Icons.child_care, size: 30),
                 label: const Text('Mode Anak'),
@@ -41,20 +72,12 @@ class ChooserPage extends StatelessWidget {
                   backgroundColor: Colors.orangeAccent,
                   foregroundColor: Colors.white,
                 ),
-                onPressed: () {
-                  // Pindah ke Halaman Pemilihan Profil
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const StudentSelectionPage(),
-                    ),
-                  );
-                },
+                onPressed: _goToModeAnak, // Panggil fungsi cek sesi
               ),
 
               const SizedBox(height: 30),
 
-              // Tombol 2: Mode Dewasa (Ini sudah benar)
+              // Tombol "Mode Dewasa"
               ElevatedButton.icon(
                 icon: const Icon(Icons.person, size: 30),
                 label: const Text('Mode Dewasa'),

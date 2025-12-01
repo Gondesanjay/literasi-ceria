@@ -1,119 +1,142 @@
-#  Literasi Ceria (Aplikasi Edukasi Full-Stack)
+# 📚 Literasi Ceria (Aplikasi Edukasi Anak Usia Dini) - Final Version
 
-Sebuah platform literasi digital *full-stack* untuk anak usia dini, guru, dan orang tua, dibangun menggunakan **Flutter** dan **Strapi**. Proyek ini adalah implementasi dari dokumen konsep "Literasi Ceria".
-
-
+Platform literasi digital *full-stack* yang interaktif untuk anak, guru, dan orang tua. Dibangun menggunakan **Flutter** (Frontend) dan **Strapi v5** (Backend). Proyek ini mengimplementasikan konsep "Satu Aplikasi, Dua Mode" untuk menjembatani kesenjangan teknologi di PAUD.
 
 ## 🌟 Konsep Inti: "Satu Aplikasi, Dua Mode"
 
-[cite_start]Aplikasi ini menggunakan satu basis kode (codebase) untuk melayani dua antarmuka yang sangat berbeda, berdasarkan dokumen konsep[cite: 8]:
+Aplikasi ini melayani dua pengguna utama dengan antarmuka yang berbeda:
 
 1.  **Mode Anak (Antarmuka Belajar):**
-    * [cite_start]Desain visual seperti game edukasi, minim teks, dan kaya audio/video[cite: 13].
-    * [cite_start]Akses tanpa login; anak cukup memilih profil mereka berdasarkan nama/foto[cite: 14].
-    * [cite_start]Secara otomatis mencatat log aktivitas (konten apa yang dimainkan/ditonton) ke backend[cite: 71].
+    * **Desain:** Ceria, tombol besar, minim teks, dan navigasi visual.
+    * **Interaksi:** Game Drag & Drop, Audio Interaktif, dan Video Player ramah anak.
+    * **Akses:** Tanpa password, cukup pilih foto profil ("Smart Session").
 
 2.  **Mode Dewasa (Antarmuka Dasbor):**
-    * [cite_start]Desain bersih berbasis data dan menu[cite: 17].
-    * [cite_start]Akses aman menggunakan login email/password[cite: 18].
-    * [cite_start]Menampilkan dasbor yang berbeda berdasarkan peran (Role) pengguna[cite: 19].
-
-## ✨ Fitur Utama yang Telah Diimplementasikan
-
-### Mode Anak (Publik)
-* **Pemilihan Profil:** Anak memilih profil mereka (`StudentSelectionPage`).
-* [cite_start]**Pustaka Konten:** Menampilkan daftar konten (video & game) secara dinamis dari Strapi (`ContentListPage`)[cite: 51, 56].
-* **Video Player:** Memutar konten video langsung dari Strapi (`DetailPage` dengan `video_player`).
-* [cite_start]**Pencatatan Aktivitas:** Secara otomatis mengirim log (`ActivityLog`) ke Strapi setiap kali anak membuka konten[cite: 71, 75].
-
-### Mode Dewasa (Terproteksi)
-* **Splash Screen Pintar:** Mengecek sesi (`SharedPreferences`) saat aplikasi dibuka. Jika sudah login, langsung masuk ke dasbor yang sesuai.
-* **Login Berbasis Peran:** Sistem login aman yang terhubung ke Strapi (`/api/auth/local`) dan menyimpan token (JWT) serta peran pengguna (`guru` atau `orang_tua`).
-* [cite_start]**Dasbor Guru:** Menampilkan daftar murid yang **hanya** tertaut ke guru yang sedang login (menggunakan *workaround* filter sisi klien untuk mengatasi bug izin relasi Strapi)[cite: 62].
-* [cite_start]**Dasbor Orang Tua:** Menampilkan daftar anak yang **hanya** tertaut ke orang tua yang sedang login (logika filter yang sama)[cite: 64].
-* **Laporan Kualitatif:**
-    * Guru/Ortu dapat mengklik nama murid/anak untuk melihat `ActivityHistoryPage`.
-    * [cite_start]Halaman ini mengambil *semua* log aktivitas untuk anak tersebut[cite: 71].
-    * Halaman ini juga mengambil "kamus" konten untuk menampilkan nama konten (cth: "Cerita Kancil") bukan hanya ID ("Konten 12").
-    * [cite_start]Menampilkan tab "Laporan" dengan analisis kualitatif sederhana (Total aktivitas, total durasi, dan insight)[cite: 69].
-
-## 🛠️ Tumpukan Teknologi (Tech Stack)
-
-* **Frontend (Aplikasi Mobile):** Flutter
-* **Backend (Headless CMS):** Strapi v5
-* **Database:** MySQL
+    * **Desain:** Bersih, berbasis data, dan profesional.
+    * **Akses:** Login aman (Email/Password) dengan filter peran (Guru vs Orang Tua).
+    * **Fungsi:** Memantau laporan perkembangan anak dan mengakses materi ajar.
 
 ---
 
-## 🚀 Langkah-langkah Instalasi & Menjalankan Proyek
+## ✨ Fitur Unggulan (Selesai Dibangun)
 
-Berikut adalah cara untuk menjalankan proyek ini di komputermu.
+### 👶 Mode Anak (Student Features)
+* **Login Visual:** Anak memilih akun berdasarkan foto wajah mereka sendiri.
+* **Smart Session:** Aplikasi mengingat anak yang terakhir bermain, jadi tidak perlu login ulang setiap kali membuka aplikasi.
+* **Pojok Cerita (Bioskop Mini):**
+    * Menonton video pembelajaran dengan UI ramah anak (menggunakan *Chewie Player*).
+    * Mendukung mode layar penuh (*Full Screen*) dan kontrol mudah.
+* **Taman Huruf (Game Interaktif):**
+    * **Konsep:** Mengenal huruf dan benda.
+    * **Gameplay:** *Drag & Drop* (Seret & Lepas) gambar benda (misal: Apel) ke kotak huruf yang sesuai (misal: A).
+    * **Audio:** Suara huruf/instruksi diputar instan (menggunakan aset lokal).
+    * **Feedback:** Animasi bintang/konfeti (*Lottie*) saat jawaban benar.
+    * **Acak (Shuffle):** Urutan soal dan posisi gambar selalu berubah agar anak tidak bosan.
+* **Petualangan Angka (Numerasi):**
+    * Game berhitung benda (misal: Hitung jumlah bola, seret ke angka 3).
+    * Menggunakan logika interaktif yang sama dengan Taman Huruf.
+
+### 🧑‍🏫 Mode Guru (Teacher Features)
+* **Dasbor Kelas:** Melihat daftar murid yang tertaut di kelasnya saja (Privasi Data Terjamin).
+* **Mode Presentasi (Pustaka Materi):**
+    * Tab khusus berisi materi ajar yang bersih dan formal.
+    * **Fitur Panduan Diskusi:** Menampilkan teks panduan/pertanyaan pemantik di bawah video untuk membantu guru memimpin diskusi kelas.
+* **Laporan Perkembangan Canggih:**
+    * **Visual:** Grafik Pie Chart (Perbandingan Aktivitas Video vs Game).
+    * **Detail Log:** Mencatat secara spesifik apakah anak "Sukses" atau "Gagal", berapa lama durasi pengerjaan (detik), dan detail kesalahannya.
+
+### 👪 Mode Orang Tua (Parent Features)
+* Memantau aktivitas belajar anak dari rumah.
+* Melihat laporan detail yang sama dengan guru untuk sinkronisasi perkembangan anak.
+
+---
+
+## 🛠️ Tumpukan Teknologi (Tech Stack)
+
+* **Frontend:** Flutter (Dart SDK ^3.0)
+* **Backend:** Strapi v5 (Node.js)
+* **Database:** MySQL
+* **Paket Flutter Kunci:**
+    * `audioplayers`: Untuk efek suara game yang responsif.
+    * `lottie`: Untuk animasi kemenangan yang menarik.
+    * `chewie` & `video_player`: Untuk pemutar video yang kustomisasi.
+    * `fl_chart`: Untuk visualisasi data laporan.
+    * `shared_preferences`: Untuk manajemen sesi login.
+    * `http`: Untuk komunikasi API dengan Strapi.
+
+---
+
+## 🚀 Cara Menjalankan Proyek (Wajib Dibaca!)
+
+Karena proyek ini melibatkan koneksi antara Emulator HP dan Server Lokal, pengaturan Jaringan (IP Address) sangat krusial.
 
 ### Prasyarat
-* [Node.js](https://nodejs.org/) (v18 atau v20+)
-* [Flutter SDK](https://flutter.dev/docs/get-started/install)
-* [XAMPP](https://www.apachefriends.org/index.html) (atau server MySQL lainnya)
-* Sebuah server database MySQL yang berjalan (buat database kosong, misal `literasi_ceria_db`).
+* [Node.js](https://nodejs.org/) (v18 atau v20)
+* [Flutter SDK](https://flutter.dev/)
+* [XAMPP](https://www.apachefriends.org/) (MySQL Database)
 
-### 1. Penyiapan Backend (Strapi)
+### 1. Menjalankan Backend (Strapi)
 
-Server Strapi **wajib** dijalankan terlebih dahulu.
+Kita menggunakan versi backend terbaru (`v2`) yang sudah dilengkapi skrip izin otomatis.
 
-1.  **Masuk ke folder backend:**
+1.  Pastikan MySQL di XAMPP sudah menyala (Start).
+2.  Masuk ke folder backend:
     ```bash
-    cd literasi-ceria-backend
+    cd literasi-ceria-backend-v2
     ```
-
-2.  **Install semua dependensi:**
+3.  Install dependensi (jika belum):
     ```bash
     npm install
     ```
-
-3.  **Konfigurasi Database:**
-    * Proyek ini sudah dikonfigurasi untuk berjalan di `0.0.0.0` (untuk koneksi Emulator) menggunakan file `config/env/development/server.ts`.
-    * Kamu mungkin perlu mengatur koneksi database MySQL-mu di file `config/database.js` atau di file `.env`.
-
-4.  **Bangun (Build) Proyek:**
-    * Kita perlu membangun (compile) file kustom `src/index.ts` (untuk "memaksa" izin) dan `config/server.ts` (untuk host).
-    ```bash
-    npm run build
-    ```
-
-5.  **Jalankan Server Strapi (Mode Develop):**
-    * Gunakan `npm run develop` (bukan `start`) agar skrip "pemaksa izin" (Bootstrap) kita berjalan.
+4.  Jalankan server dalam mode develop:
     ```bash
     npm run develop
     ```
-    * Saat server menyala, **pastikan kamu melihat dua hal di log:**
-        1.  `✅ Izin ... BERHASIL DI-UPDATE...` (Bukti izin beres)
-        2.  `http://0.0.0.0:1337` (Bukti host beres)
+    * *Note: Skrip `src/index.ts` akan otomatis mengatur semua Izin (Permission) Public & Authenticated saat server menyala.*
+    * **Pastikan** terminal menampilkan akses di: `http://0.0.0.0:1337` (Ini tanda server siap diakses dari luar).
 
-6.  **Setup Manual Strapi (Wajib):**
-    * Buka `http://localhost:1337/admin` dan buat akun Super Admin pertamamu.
-    * Buat data `Content` (Pojok Cerita), unggah video, dan salin URL-nya ke field `video_url`. **Jangan lupa `Publish`**.
-    * Buat data `User` (1 Guru, 1 Ortu), pastikan `Confirmed=TRUE`, `role=Authenticated`, dan `peran` diisi.
-    * Buat data `Student` (Murid), **jangan lupa `Publish`**.
-    * Tautkan `Student` ke `User` (Guru & Ortu) melalui field relasi di Strapi.
+### 2. Menyiapkan Data (Strapi Admin)
+Buka `http://localhost:1337/admin` dan pastikan data berikut ada dan berstatus **Published**:
+* **Quiz:** Buat soal (Pertanyaan: "A", Gambar URL: [Link], Audio URL: [Link]).
+* **Content:** Buat konten Game/Video dan tautkan dengan Quiz di atas.
+* **Student & User:** Pastikan data murid terhubung dengan Guru/Ortu.
 
-### 2. Penyiapan Frontend (Flutter)
+### 3. Menjalankan Frontend (Flutter)
 
-1.  **Pastikan Server Strapi sedang berjalan!**
+**PENTING: Pengaturan IP Address**
+Emulator Android tidak bisa mengakses `localhost`. Kita harus menggunakan IP WiFi komputer.
 
-2.  **Masuk ke folder frontend:**
+1.  Buka Command Prompt (CMD) di komputer, ketik `ipconfig`.
+2.  Salin **IPv4 Address** (contoh: `192.168.1.10`).
+3.  Buka folder `literasi_ceria_app/lib/`.
+4.  Ganti variabel `_strapiBaseUrl` atau `_strapiIP` di file-file berikut dengan IP barumu:
+    * `main.dart` / `splash_page.dart`
+    * `student_selection_page.dart`
+    * `content_list_page.dart`
+    * `detail_page.dart`
+    * `quiz_game_widget.dart` & `number_game_widget.dart`
+    * `video_player_widget.dart`
+    * `dashboard_page.dart` & `parent_dashboard_page.dart`
+    * `activity_history_page.dart`
+
+5.  Pastikan folder aset audio ada: `literasi_ceria_app/assets/audio/` (isi dengan file `a.mp3`, `1.mp3`, dll).
+
+6.  Jalankan aplikasi:
     ```bash
     cd literasi_ceria_app
-    ```
-
-3.  **Install semua dependensi:**
-    ```bash
-    flutter pub get
-    ```
-
-4.  **Cek Koneksi:**
-    * Pastikan semua alamat IP di dalam file `.dart` (seperti `http://10.0.2.2:1337`) sudah benar untuk setup-mu. (`10.0.2.2` adalah alamat IP khusus untuk Android Emulator).
-
-5.  **Jalankan Aplikasi:**
-    * Pastikan Emulator-mu berjalan (disarankan melakukan "Wipe Data" dan "Cold Boot" jika ini pertama kalinya).
-    ```bash
     flutter run
     ```
+
+---
+
+## 📝 Struktur Database (Strapi Collection Types)
+
+* **Users:** Menyimpan akun Guru & Orang Tua (dengan field custom `peran`).
+* **School:** Menyimpan data sekolah.
+* **Student:** Profil anak (Nama, Foto) yang berelasi dengan Guru & Ortu.
+* **Content:** Materi ajar (Judul, Tipe, Thumbnail, Deskripsi, Video URL).
+* **Quiz:** Soal-soal untuk game (Pertanyaan/Huruf, Gambar URL, Audio URL).
+* **ActivityLog:** Mencatat riwayat bermain (Student ID, Content ID, Durasi, Module, Action, Result, Detail).
+
+---
+*Dibuat dengan semangat untuk memajukan pendidikan anak usia dini di Indonesia.* 🇮🇩
