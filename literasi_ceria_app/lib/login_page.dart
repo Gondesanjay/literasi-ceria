@@ -6,7 +6,7 @@ import 'dashboard_page.dart';
 import 'parent_dashboard_page.dart';
 
 // Menggunakan IP WiFi-mu yang benar
-const String _strapiIP = "http://192.168.1.11:1337";
+const String _strapiIP = "http://192.168.1.12:1337";
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});

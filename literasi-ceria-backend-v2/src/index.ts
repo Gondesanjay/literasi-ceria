@@ -3,7 +3,7 @@
 // Helper function untuk memaksa izin
 async function forcePermission(strapi: any, roleType: string, apiName: string, action: string, fields: string[]) {
   try {
-    // 1. Temukan ID role (cth: 'authenticated' atau 'public')
+    // 1. Temukan ID role
     const role = await strapi
       .query('plugin::users-permissions.role')
       .findOne({ where: { type: roleType } });
@@ -13,7 +13,7 @@ async function forcePermission(strapi: any, roleType: string, apiName: string, a
       return;
     }
 
-    // 2. Tentukan nama aksi (cth: 'api::student.student.find')
+    // 2. Tentukan nama aksi
     const actionName = `api::${apiName}.${apiName}.${action}`;
     const permissionData = {
       action: actionName,
@@ -35,30 +35,28 @@ async function forcePermission(strapi: any, roleType: string, apiName: string, a
       console.log(`ℹ️ Izin "${actionName}" untuk ${roleType} sudah ada.`);
     }
 
-    // 5. MEMPERBARUI IZIN (Ini akan memaksa semua field)
+    // 5. MEMPERBARUI IZIN (Paksa field)
     await strapi.query('plugin::users-permissions.permission').update({
       where: {
         action: actionName,
         role: role.id,
       },
       data: {
-        fields: fields, // <-- KUNCI UTAMA
+        fields: fields,
       },
     });
 
-    console.log(`✅ Izin "${actionName}" BERHASIL DI-UPDATE dengan fields: ${fields.join(', ')}`);
+    console.log(`✅ Izin "${actionName}" BERHASIL DI-UPDATE.`);
 
   } catch (error) {
     console.error(`❌ Gagal mem-bootstrap izin untuk ${apiName}.${action}:`, error.message);
   }
 }
 
-// Fungsi untuk mendapatkan semua field dari sebuah contentType
 function getApiFields(strapi: any, apiName: string) {
   const apiId = `api::${apiName}.${apiName}`;
   const api = strapi.contentType(apiId);
   if (api) {
-    // Kita filter 'createdBy' dan 'updatedBy' karena sering error
     const fields = Object.keys(api.attributes).filter(
       (key) => key !== 'createdBy' && key !== 'updatedBy'
     );
@@ -69,10 +67,6 @@ function getApiFields(strapi: any, apiName: string) {
 }
 
 export default {
-  /**
-   * An asynchronous bootstrap function that runs before
-   * your application gets started.
-   */
   async bootstrap({ strapi }: { strapi: any }) {
     console.log('🚀 Bootstrapping permissions... (Memaksa Izin...)');
 
@@ -98,27 +92,39 @@ export default {
     const contentFieldsPublic = getApiFields(strapi, 'content');
     if (contentFieldsPublic) {
       await forcePermission(strapi, 'public', 'content', 'find', contentFieldsPublic);
-      // === INI PERBAIKAN BARUNYA (Masalah Error 404) ===
       await forcePermission(strapi, 'public', 'content', 'findOne', contentFieldsPublic);
-      // === AKHIR PERBAIKAN BARU ===
     }
     const kuisFieldsPublic = getApiFields(strapi, 'quiz');
     if (kuisFieldsPublic) {
       await forcePermission(strapi, 'public', 'quiz', 'find', kuisFieldsPublic);
-      // (Kita tambahkan 'findOne' juga untuk jaga-jaga)
       await forcePermission(strapi, 'public', 'quiz', 'findOne', kuisFieldsPublic);
     }
+
+    // === PERBAIKAN UTAMA: IZIN STUDENT UNTUK PUBLIC ===
     const studentFieldsPublic = getApiFields(strapi, 'student');
     if (studentFieldsPublic) {
+      // Izin melihat daftar (untuk login)
       await forcePermission(strapi, 'public', 'student', 'find', studentFieldsPublic);
-    }
 
-    // --- 3. IZIN ROLE "PUBLIC" (UPLOAD/MEDIA LIBRARY) ---
-    // Ini untuk 'file_konten' (Video) dan 'foto_profil' (Gambar)
-    const uploadFields = ['url', 'name', 'mime', 'size', 'width', 'height', 'formats'];
-    // Perhatikan: Nama API untuk Upload adalah 'upload', tapi action-nya adalah 'plugin::upload.file.find'
-    // Kode helper kita tidak dirancang untuk ini. Kita akan skip 'upload' untuk sekarang.
-    // Kita sudah mengaturnya di Langkah 9.2 (yang lama) dan seharusnya itu sudah cukup.
-    // Jika 'foto_profil' gagal dimuat, kita akan perbaiki nanti.
+      // Izin melihat detail satu murid (untuk cek bintang)
+      await forcePermission(strapi, 'public', 'student', 'findOne', studentFieldsPublic);
+
+      // Izin MENGUBAH data murid (untuk tambah bintang)
+      await forcePermission(strapi, 'public', 'student', 'update', studentFieldsPublic);
+    }
+    // ==================================================
+
+    // --- 3. IZIN ROLE "PUBLIC" (MEDIA LIBRARY) ---
+    try {
+      const role = await strapi.query('plugin::users-permissions.role').findOne({ where: { type: 'public' } });
+      const actionName = 'plugin::upload.read';
+      const existingPermission = await strapi.query('plugin::users-permissions.permission').findOne({ where: { action: actionName, role: role.id } });
+      if (!existingPermission) {
+        await strapi.query('plugin::users-permissions.permission').create({ data: { action: actionName, role: role.id } });
+        console.log(`✅ Izin "${actionName}" untuk public BERHASIL DIBUAT.`);
+      }
+    } catch (e) {
+      console.error('❌ Gagal mem-bootstrap izin media:', e.message);
+    }
   },
 };

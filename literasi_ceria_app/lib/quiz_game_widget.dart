@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter_tts/flutter_tts.dart'; // <-- PAKAI TTS
 import 'package:lottie/lottie.dart';
 
-// GANTI DENGAN IP WIFI-MU YANG BENAR
-const String _strapiBaseUrl = "http://192.168.1.11:1337";
+// GANTI DENGAN IP WIFI-MU
+const String _strapiBaseUrl = "http://192.168.1.12:1337";
 
 class QuizGameWidget extends StatefulWidget {
   final int contentId;
-  final int studentId; // ID murid untuk laporan
+  final int studentId;
 
   const QuizGameWidget({
     super.key,
@@ -26,187 +26,151 @@ class _QuizGameWidgetState extends State<QuizGameWidget> {
   String _errorMessage = '';
   List _allQuizzes = [];
 
-  // State Game
   int _currentIndex = 0;
   List _currentOptions = [];
   bool _isSuccess = false;
-
-  // Variabel Laporan
   int _attempts = 0;
   DateTime? _startTime;
 
-  // Inisialisasi Audio Player
-  final AudioPlayer _audioPlayer = AudioPlayer();
+  // === INI TTS ENGINE KITA ===
+  final FlutterTts _flutterTts = FlutterTts();
 
   @override
   void initState() {
     super.initState();
+    _setupTts(); // Siapkan suara
     _fetchQuizData();
-    _startTime = DateTime.now(); // Mulai stopwatch
+    _startTime = DateTime.now();
+  }
+
+  // Konfigurasi Bahasa (Indonesia)
+  Future<void> _setupTts() async {
+    await _flutterTts.setLanguage("id-ID"); // Set Bahasa Indonesia
+    await _flutterTts.setSpeechRate(0.5); // Kecepatan sedang
+    await _flutterTts.setPitch(1.0); // Nada normal
+  }
+
+  // Fungsi Bicara
+  Future<void> _speak(String text) async {
+    if (text.isNotEmpty) {
+      print("🗣️ Mengucapkan: $text");
+      await _flutterTts.speak(text);
+    }
   }
 
   @override
   void dispose() {
-    _audioPlayer.dispose();
+    _flutterTts.stop();
     super.dispose();
   }
 
-  // --- FUNGSI LAPORAN CANGGIH (Ke Strapi) ---
+  // --- LAPORAN (Tanpa Bintang) ---
   Future<void> _logActivity(String action, String result, String detail) async {
-    // Hitung durasi bermain saat ini
     int duration = 0;
-    if (_startTime != null) {
+    if (_startTime != null)
       duration = DateTime.now().difference(_startTime!).inSeconds;
-    }
-
-    final String apiUrl = "$_strapiBaseUrl/api/activity-logs";
     try {
       await http.post(
-        Uri.parse(apiUrl),
+        Uri.parse("$_strapiBaseUrl/api/activity-logs"),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'data': {
             'student_id': widget.studentId.toString(),
             'content_id': widget.contentId.toString(),
             'durasi': duration,
-            'module': 'Taman Huruf', // Nama Modul
-            'action': action, // Apa yang dilakukan
-            'result': result, // Hasil (Sukses/Gagal)
-            'detail': detail, // Detail (Percobaan ke-X)
+            'module': 'Taman Huruf',
+            'action': action,
+            'result': result,
+            'detail': detail,
           },
         }),
       );
-      print("✅ Log Laporan Canggih Terkirim: $action - $result");
     } catch (e) {
-      print("❌ Gagal kirim log: $e");
+      print("Log error: $e");
     }
   }
 
-  // --- AMBIL DATA DARI STRAPI ---
   Future<void> _fetchQuizData() async {
     final String apiUrl =
         "$_strapiBaseUrl/api/contents?filters[id][\$eq]=${widget.contentId}&populate=quizzes";
-
     try {
       final response = await http.get(Uri.parse(apiUrl));
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final List contentList = data['data'] ?? [];
-
         if (contentList.isEmpty) throw Exception("Konten tidak ditemukan.");
-
-        final Map<String, dynamic> contentItem = contentList[0];
-        final List items = contentItem['quizzes'] ?? [];
-
+        final List items = contentList[0]['quizzes'] ?? [];
         if (items.isEmpty) throw Exception("Data kuis kosong.");
 
-        // Acak soal agar seru
         items.shuffle();
-
         if (!mounted) return;
         setState(() {
           _allQuizzes = items;
           _isLoading = false;
         });
-
-        _prepareLevel(); // Siapkan level pertama
+        _prepareLevel();
       } else {
         throw Exception('Gagal ambil data: ${response.statusCode}');
       }
     } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-        _errorMessage = e.toString();
-      });
+      if (mounted)
+        setState(() {
+          _isLoading = false;
+          _errorMessage = e.toString();
+        });
     }
   }
 
-  // --- PERSIAPAN LEVEL ---
   void _prepareLevel() {
     var target = _allQuizzes[_currentIndex];
     List options = [target];
-
     if (_allQuizzes.length > 1) {
       var others = List.from(_allQuizzes)..remove(target);
       others.shuffle();
       options.addAll(others.take(2));
     }
-
     options.shuffle();
 
     setState(() {
       _isSuccess = false;
       _currentOptions = options;
-      _attempts = 0; // Reset percobaan
+      _attempts = 0;
     });
 
-    // Putar suara huruf target
+    // === BICARA ===
+    // Bersihkan teks agar enak didengar
     String targetLetter = target['pertanyaan'] ?? '';
-    _playLocalSound(targetLetter);
+    targetLetter = targetLetter.replaceAll('"', '').replaceAll("'", "").trim();
+
+    // Aplikasi akan bicara: "Huruf... A!"
+    _speak("Huruf... $targetLetter");
   }
 
-  // --- AUDIO LOKAL ---
-  Future<void> _playLocalSound(String label) async {
-    // Bersihkan label (misal '"A"' -> 'a')
-    String cleanLabel = label
-        .replaceAll('"', '')
-        .replaceAll("'", "")
-        .trim()
-        .toLowerCase();
-    String fileName = "audio/$cleanLabel.mp3";
-
-    print("🎵 Memutar aset: assets/$fileName");
-
-    try {
-      await _audioPlayer.stop();
-      await _audioPlayer.play(AssetSource(fileName));
-    } catch (e) {
-      print("❌ Gagal memutar audio lokal: $e");
-    }
-  }
-
-  // --- SAAT MENANG ---
   void _handleSuccess() {
     setState(() {
       _isSuccess = true;
     });
-
-    // Kirim Laporan SUKSES (Hijau)
-    String detailText = "Berhasil pada percobaan ke-${_attempts + 1}";
-    _logActivity("Menebak Huruf", "Sukses", detailText);
+    _logActivity("Menebak Huruf", "Sukses", "Percobaan ke-${_attempts + 1}");
+    _speak("Hebat! Itu benar."); // Bicara saat menang
 
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
+        backgroundColor: Colors.white,
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Lottie.network(
               'https://assets10.lottiefiles.com/packages/lf20_touohxv0.json',
-              height: 200,
-              repeat: false,
-              errorBuilder: (ctx, err, stack) =>
-                  const Icon(Icons.star, size: 100, color: Colors.orange),
+              height: 150,
             ),
-            const SizedBox(height: 20),
-            Container(
-              padding: const EdgeInsets.all(15),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Text(
-                "HEBAT!",
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.orange,
-                ),
+            const Text(
+              "HEBAT!",
+              style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                color: Colors.orange,
               ),
             ),
           ],
@@ -214,10 +178,9 @@ class _QuizGameWidgetState extends State<QuizGameWidget> {
       ),
     );
 
-    Future.delayed(const Duration(milliseconds: 2500), () {
+    Future.delayed(const Duration(milliseconds: 2000), () {
       if (!mounted) return;
       Navigator.of(context).pop();
-
       if (_currentIndex < _allQuizzes.length - 1) {
         setState(() {
           _currentIndex++;
@@ -240,8 +203,6 @@ class _QuizGameWidgetState extends State<QuizGameWidget> {
       return Center(child: Text("Error: $_errorMessage"));
 
     final currentQuiz = _allQuizzes[_currentIndex];
-
-    // Bersihkan label huruf target
     String rawLetter = currentQuiz['pertanyaan'] ?? '?';
     final String targetLetter = rawLetter
         .replaceAll('"', '')
@@ -251,37 +212,30 @@ class _QuizGameWidgetState extends State<QuizGameWidget> {
     return Column(
       children: [
         const SizedBox(height: 20),
-
-        // AREA TARGET (HURUF)
         Expanded(
           flex: 3,
           child: Center(
             child: DragTarget<String>(
               onAccept: (receivedLetter) {
-                // Bersihkan huruf yang diterima sebelum dicek
                 String cleanReceived = receivedLetter
                     .replaceAll('"', '')
                     .replaceAll("'", "")
                     .trim();
-
                 if (cleanReceived == targetLetter) {
                   _handleSuccess();
                 } else {
-                  // === JIKA SALAH ===
                   setState(() {
                     _attempts++;
-                  }); // Tambah counter salah
-
-                  // KIRIM LAPORAN GAGAL (MERAH) KE STRAPI
+                  });
                   _logActivity(
-                    "Menebak Huruf", // Action
-                    "Gagal", // Result (Merah di Detail)
-                    "Salah menebak. Memilih $cleanReceived tapi targetnya $targetLetter", // Detail
+                    "Menebak Huruf",
+                    "Gagal",
+                    "Salah pilih $cleanReceived",
                   );
-
+                  _speak("Coba lagi ya."); // Bicara saat salah
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text("Ups, coba gambar yang lain!"),
+                      content: Text("Ups, coba lagi!"),
                       backgroundColor: Colors.orange,
                       duration: Duration(milliseconds: 500),
                     ),
@@ -289,31 +243,21 @@ class _QuizGameWidgetState extends State<QuizGameWidget> {
                 }
               },
               builder: (context, candidateData, rejectedData) {
-                bool isHovering = candidateData.isNotEmpty;
                 return Container(
                   width: 220,
                   height: 220,
                   decoration: BoxDecoration(
-                    color: isHovering
+                    color: candidateData.isNotEmpty
                         ? Colors.green.shade100
                         : Colors.blue.shade50,
                     borderRadius: BorderRadius.circular(30),
-                    border: Border.all(
-                      color: isHovering ? Colors.green : Colors.blueAccent,
-                      width: 4,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black12,
-                        blurRadius: 10,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
+                    border: Border.all(color: Colors.blueAccent, width: 4),
                   ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
+                  child: Center(
+                    child: InkWell(
+                      onTap: () =>
+                          _speak(targetLetter), // Klik untuk dengar ulang
+                      child: Text(
                         targetLetter,
                         style: const TextStyle(
                           fontSize: 100,
@@ -321,19 +265,14 @@ class _QuizGameWidgetState extends State<QuizGameWidget> {
                           color: Colors.blueAccent,
                         ),
                       ),
-                      const Text(
-                        "Taruh gambar di sini!",
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                    ],
+                    ),
                   ),
                 );
               },
             ),
           ),
         ),
-
-        // AREA PILIHAN (GAMBAR)
+        // ... (Bagian Pilihan Gambar di bawah SAMA PERSIS dengan sebelumnya) ...
         Expanded(
           flex: 2,
           child: Container(
@@ -362,7 +301,6 @@ class _QuizGameWidgetState extends State<QuizGameWidget> {
                   );
                 }
                 String letter = option['pertanyaan'] ?? '';
-
                 Widget gameItem = Container(
                   width: 100,
                   height: 100,
@@ -383,7 +321,6 @@ class _QuizGameWidgetState extends State<QuizGameWidget> {
                       ? Image.network(imgUrl, fit: BoxFit.contain)
                       : const Icon(Icons.image, size: 40, color: Colors.orange),
                 );
-
                 return Draggable<String>(
                   data: letter,
                   feedback: Material(

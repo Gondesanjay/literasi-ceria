@@ -633,6 +633,7 @@ export interface ApiStudentStudent extends Struct.CollectionTypeSchema {
     >;
     publishedAt: Schema.Attribute.DateTime;
     school: Schema.Attribute.Relation<'oneToOne', 'api::school.school'>;
+    total_bintang: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;

@@ -8,7 +8,7 @@ import 'quiz_game_widget.dart';
 import 'number_game_widget.dart'; // Pastikan file ini sudah ada
 
 // GANTI DENGAN IP WIFI-MU YANG BENAR (Cek ipconfig)
-const String _strapiBaseUrl = "http://192.168.1.11:1337";
+const String _strapiBaseUrl = "http://192.168.1.12:1337";
 
 class DetailPage extends StatefulWidget {
   final Map<String, dynamic> item;

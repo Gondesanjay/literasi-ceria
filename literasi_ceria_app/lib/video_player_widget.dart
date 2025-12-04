@@ -3,7 +3,7 @@ import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart'; 
 
 // GANTI DENGAN IP WIFI-MU YANG BENAR
-const String _strapiBaseUrl = "http://192.168.1.11:1337"; 
+const String _strapiBaseUrl = "http://192.168.1.12:1337"; 
 
 class VideoPlayerWidget extends StatefulWidget {
   final Map<String, dynamic> item;

@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http; // Untuk API
+import 'dart:convert'; // Untuk jsonDecode
+import 'package:shared_preferences/shared_preferences.dart'; // Untuk Logout
+import 'dart:math'; // <-- PENTING: Untuk membuat soal matematika acak
 
 import 'detail_page.dart';
 import 'student_selection_page.dart';
 
 // GANTI INI DENGAN ALAMAT IP WIFI-MU YANG BENAR
-const String _strapiIP = "http://192.168.1.11:1337";
+const String _strapiIP = "http://192.168.1.12:1337";
 
 class ContentListPage extends StatefulWidget {
   final int studentId;
@@ -43,6 +44,7 @@ class _ContentListPageState extends State<ContentListPage> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+
         if (!mounted) return;
         setState(() {
           _daftarKonten = data['data'];
@@ -65,10 +67,109 @@ class _ContentListPageState extends State<ContentListPage> {
     }
   }
 
+  // === FITUR BARU: PARENTAL GATE (GERBANG ORANG TUA) ===
+  Future<void> _showParentalGate() async {
+    // 1. Buat Soal Acak (Angka 1-10)
+    final random = Random();
+    int a = random.nextInt(10) + 1;
+    int b = random.nextInt(10) + 1;
+    int correctAnswer = a + b;
+
+    TextEditingController answerController = TextEditingController();
+
+    // 2. Tampilkan Dialog
+    return showDialog<void>(
+      context: context,
+      barrierDismissible:
+          false, // Harus dijawab atau batal, tidak bisa klik luar
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.lock, color: Colors.orange),
+              SizedBox(width: 10),
+              Text('Area Orang Tua'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Jawab soal ini untuk keluar:',
+                style: TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                '$a + $b = ?', // Contoh: "3 + 5 = ?"
+                style: const TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blueAccent,
+                ),
+              ),
+              const SizedBox(height: 20),
+              TextField(
+                controller: answerController,
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+                decoration: const InputDecoration(
+                  hintText: '?',
+                  border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.symmetric(vertical: 10),
+                ),
+              ),
+            ],
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Batal', style: TextStyle(color: Colors.grey)),
+              onPressed: () {
+                Navigator.of(context).pop(); // Tutup dialog
+              },
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blueAccent,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Buka Kunci'),
+              onPressed: () {
+                // 3. Cek Jawaban
+                if (answerController.text.trim() == correctAnswer.toString()) {
+                  Navigator.of(context).pop(); // Tutup dialog
+                  _gantiProfil(); // JAWABAN BENAR -> JALANKAN LOGOUT
+                } else {
+                  // Jika Salah
+                  Navigator.of(context).pop(); // Tutup dialog
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Jawaban salah! Tetap di Mode Anak.'),
+                      backgroundColor: Colors.red,
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Fungsi Logout Asli
   Future<void> _gantiProfil() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('active_student_id');
     await prefs.remove('active_student_name');
+    print("Sesi anak telah dihapus.");
 
     if (!mounted) return;
     Navigator.pushAndRemoveUntil(
@@ -86,9 +187,10 @@ class _ContentListPageState extends State<ContentListPage> {
         backgroundColor: Colors.blueAccent,
         foregroundColor: Colors.white,
         actions: [
+          // TOMBOL KELUAR (Memanggil Parental Gate)
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: _gantiProfil,
+            onPressed: _showParentalGate, // <--- PANGGIL FUNGSI BARU
             tooltip: 'Ganti Profil',
           ),
         ],
@@ -131,7 +233,6 @@ class _ContentListPageState extends State<ContentListPage> {
         final String judul = item['judul'] ?? 'Tanpa Judul';
         final String tipe = item['tipe_konten'] ?? 'Tipe Tidak Diketahui';
 
-        // Logika URL Thumbnail
         String? thumbnailUrl;
         if (item['thumbnail'] != null && item['thumbnail']['url'] != null) {
           String urlPath = item['thumbnail']['url'];
@@ -145,16 +246,14 @@ class _ContentListPageState extends State<ContentListPage> {
           }
         }
 
-        // === LOGIKA IKON TERBARU ===
         IconData placeholderIcon;
         if (tipe == 'video_cerita') {
           placeholderIcon = Icons.movie_filter;
         } else if (tipe == 'game_angka') {
-          placeholderIcon = Icons.format_list_numbered; // Ikon Angka
+          placeholderIcon = Icons.format_list_numbered;
         } else {
-          placeholderIcon = Icons.games; // Ikon Game Huruf
+          placeholderIcon = Icons.games;
         }
-        // ===========================
 
         return InkWell(
           onTap: () {
@@ -188,7 +287,6 @@ class _ContentListPageState extends State<ContentListPage> {
                             );
                           },
                           errorBuilder: (context, error, stackTrace) {
-                            // Gunakan ikon yang sesuai tipe jika gambar gagal
                             return Icon(
                               placeholderIcon,
                               size: 50,
@@ -205,7 +303,6 @@ class _ContentListPageState extends State<ContentListPage> {
                           ),
                         ),
                 ),
-
                 Padding(
                   padding: const EdgeInsets.all(10.0),
                   child: Text(

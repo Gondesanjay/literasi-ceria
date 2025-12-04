@@ -6,7 +6,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'log_detail_page.dart'; // <-- 1. IMPORT HALAMAN BARU KITA
 
 // GANTI INI DENGAN ALAMAT IP WIFI-MU
-const String _strapiBaseUrl = "http://192.168.1.11:1337";
+const String _strapiBaseUrl = "http://192.168.1.12:1337";
 
 // Model Laporan (Tidak berubah)
 class Laporan {

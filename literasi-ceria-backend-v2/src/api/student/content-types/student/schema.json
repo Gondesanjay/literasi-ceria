@@ -40,6 +40,10 @@
       "type": "relation",
       "relation": "oneToOne",
       "target": "api::school.school"
+    },
+    "total_bintang": {
+      "type": "integer",
+      "default": 0
     }
   }
 }

@@ -6,7 +6,7 @@ import 'login_page.dart';
 import 'activity_history_page.dart';
 
 // Menggunakan IP WiFi-mu
-const String _strapiIP = "http://192.168.1.11:1337";
+const String _strapiIP = "http://192.168.1.12:1337";
 
 class ParentDashboardPage extends StatefulWidget {
   const ParentDashboardPage({super.key});

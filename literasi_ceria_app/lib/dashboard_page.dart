@@ -8,7 +8,7 @@ import 'activity_history_page.dart';
 import 'teacher_content_detail.dart';
 
 // GANTI DENGAN IP WIFI-MU YANG BENAR
-const String _strapiIP = "http://192.168.1.11:1337";
+const String _strapiIP = "http://192.168.1.12:1337";
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
